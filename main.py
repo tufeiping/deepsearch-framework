@@ -2,6 +2,7 @@ import asyncio
 import random
 import re
 import string
+import sys
 import traceback
 from datetime import datetime
 from typing import (
@@ -11,7 +12,7 @@ from typing import (
     Optional,
 )
 
-from brokeprompt import BrokePrompt
+from break_prompt import BreakPrompt
 from prompt import Prompt
 from tools import ScrapTool, SearchTool, extract_largest_json
 
@@ -321,15 +322,19 @@ task = """
 住宿我可能不关注，可以住在朋友家里.
 """
 
-async def main():
+async def main(task: str = task):
     agent = Agent(task=task, prompt=prompt)
     await agent.run(loop=True, max_rounds=8)
     if agent.workspace.state['status'] != '已完成':
-        brokeprompt = BrokePrompt()
+        brokeprompt = BreakPrompt()
         response = await brokeprompt.run(agent.workspace.to_string())
         print(f"\n最终答案:\n{response}")
     else:
         print(f"\n最终答案:\n{agent.workspace.state['answer']}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # if has args, then run main with args
+    if len(sys.argv) > 1:
+        asyncio.run(main(sys.argv[1]))
+    else:   
+        asyncio.run(main())

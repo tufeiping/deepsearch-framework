@@ -49,7 +49,7 @@ Memory:
 
 """
 
-class BrokePrompt():
+class BreakPrompt():
     def __init__(self):
         self.model = OpenRouterModel(api_key=os.getenv("OPENROUTER_API_KEY"))
 
