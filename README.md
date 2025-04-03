@@ -17,6 +17,8 @@ pip install -r requirements.txt
 ```
 # Tavily API密钥
 TAVILY_API_KEY=your_tavily_api_key_here
+# OpenRouter API密钥
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```
 
 您可以从[Tavily官网](https://tavily.com/)获取API密钥。
