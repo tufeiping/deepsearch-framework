@@ -10,6 +10,8 @@
 pip install -r requirements.txt
 ```
 
+> Python版本要求: Python 3.10+
+
 2. 配置环境变量:
 
 复制`.env.example`文件（如果存在）或创建一个新的`.env`文件，并设置必要的API密钥:
