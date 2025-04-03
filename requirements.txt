@@ -1,0 +1,6 @@
+langchain-text-splitters
+jinja2
+aiohttp==3.11.12
+tavily-python==0.5.4
+beautifulsoup4==4.13.3
+python-dotenv==1.0.1
