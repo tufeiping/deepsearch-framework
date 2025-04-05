@@ -50,7 +50,7 @@ class GradioAgent:
         self.status = "等待开始"
         self.task = ""
         
-    async def process_task(self, task: str, progress=gr.Progress()) -> Dict:
+    async def process_task(self, task: str, max_rounds: int = 8, progress=gr.Progress()) -> Dict:
         """处理任务并返回结果"""
         self.task = task
         self.tools_used = []
@@ -182,14 +182,27 @@ class GradioAgent:
         current_date = datetime.now().strftime("%Y-%m-%d")
         self.agent = Agent(task=task, prompt=prompt, current_date=current_date)
         
-        max_rounds = 8
+        # 使用传入的max_rounds作为最大轮数
         try:
+            # 遍历执行每一轮
             for round_num in range(max_rounds):
-                progress(round_num / max_rounds, f"执行第 {round_num + 1} 轮搜索...")
+                progress((round_num) / max_rounds, f"执行第 {round_num + 1} 轮搜索...")
+                
+                # 执行一轮处理
                 await self.agent.run(loop=False)
                 
+                # 记录工具调用
                 if self.agent.tool_records:
-                    self.tools_used.extend(self.agent.tool_records)
+                    # 重要：深拷贝tool_records，避免引用同一个对象
+                    for record in self.agent.tool_records:
+                        # 使用字典复制而不是直接引用
+                        self.tools_used.append({
+                            "tool": record["tool"],
+                            "input": record["input"],
+                            "output": record["output"]
+                        })
+                    
+                    print(f"第 {round_num + 1} 轮工具调用: {len(self.agent.tool_records)} 个")
                 
                 # 如果任务完成，跳出循环
                 if self.agent.workspace.is_done():
@@ -205,10 +218,16 @@ class GradioAgent:
                 self.answer = await brokeprompt.run(self.agent.workspace.to_string())
                 self.important_links = self.agent.workspace.state['important_links']
                 self.status = "已总结"
+            
+            # 打印工具调用总数
+            print(f"工具调用总数: {len(self.tools_used)}")
         
         except Exception as e:
             self.status = "出错"
             self.answer = f"发生错误: {str(e)}"
+            print(f"执行过程中发生错误: {str(e)}")
+            import traceback
+            traceback.print_exc()
         
         # 返回结果
         return {
@@ -255,7 +274,7 @@ with gr.Blocks(css="""
     .tool-accordion {
         margin-bottom: 10px;
     }
-""") as demo:
+""", title="DeepSearch Framework - 智能信息搜索分析") as demo:
     gr.Markdown("""
     # 深度搜索助手 - DeepSearch Framework
     
@@ -269,7 +288,18 @@ with gr.Blocks(css="""
                 placeholder="例如：帮我制定一个计划，5月份到新加坡游玩4-5天...",
                 lines=5
             )
-            submit_btn = gr.Button("开始搜索", variant="primary")
+            
+            with gr.Row():
+                # 添加任务轮数选择
+                max_rounds_slider = gr.Slider(
+                    minimum=1,
+                    maximum=12,
+                    value=8,
+                    step=1,
+                    label="最大任务轮数",
+                    info="设置任务执行的最大轮数（1-12轮）"
+                )
+                submit_btn = gr.Button("开始搜索", variant="primary")
         
         with gr.Column(scale=2):
             status_output = gr.Textbox(label="状态", value="等待开始")
@@ -283,27 +313,12 @@ with gr.Blocks(css="""
             memory_output = gr.HTML(label="记忆块")
         
         with gr.TabItem("工具调用"):
-            tools_output = gr.Accordion(
-                label="工具调用记录", 
-                open=False
-            )
+            tools_container = gr.Accordion(label="工具调用记录容器", open=True)
+            with tools_container:
+                tools_output = gr.HTML("暂无工具调用记录")
     
-    def format_tools_output(tool_records):
-        """将工具记录格式化为accordion组件"""
-        accordions = []
-        for record in tool_records:
-            label = f"[{record['index']}] {record['tool']}: {record['input']}"
-            accordions.append(gr.Accordion(
-                label=label,
-                open=False,
-                render=False
-            ))
-            with accordions[-1]:
-                gr.Markdown(record['output'])
-        return accordions
-    
-    async def process_query(task):
-        results = await gradio_agent.process_task(task)
+    async def process_query(task, max_rounds):
+        results = await gradio_agent.process_task(task, int(max_rounds))
         
         # 格式化记忆块
         memory_html = format_memory_blocks(results["memory_blocks"])
@@ -311,29 +326,34 @@ with gr.Blocks(css="""
         # 格式化链接
         links_html = format_links(results["important_links"])
         
-        # 创建工具调用accordion
-        tool_accordions = []
+        # 格式化工具调用记录为HTML
+        tools_html = ""
         for record in results["tool_records"]:
-            tool_accordions.append(
-                gr.Accordion(
-                    label=f"[{record['index']}] {record['tool']}: {record['input']}",
-                    open=False
-                ),
-            )
-            with tool_accordions[-1]:
-                gr.Markdown(record['output'])
+            tools_html += f"""
+            <div class="tool-record">
+                <details>
+                    <summary><strong>[{record['index']}] {record['tool']}: {record['input']}</strong></summary>
+                    <div class="tool-output">
+                        <pre>{record['output']}</pre>
+                    </div>
+                </details>
+            </div>
+            """
+        
+        if not tools_html:
+            tools_html = "<p>暂无工具调用记录</p>"
         
         return [
             results["status"],
             results["answer"],
             links_html,
             memory_html,
-            *tool_accordions
+            tools_html
         ]
     
     submit_btn.click(
         fn=process_query,
-        inputs=[task_input],
+        inputs=[task_input, max_rounds_slider],
         outputs=[
             status_output,
             answer_output,
