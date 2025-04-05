@@ -1,10 +1,11 @@
 import asyncio
+import os
 import gradio as gr
 import json
 import re
 from datetime import datetime
 from typing import Dict, List, Any
-from main import Agent, Prompt, BreakPrompt
+from main import Agent, Prompt, BreakPrompt, AGENT_PROMPT_TEMPLATE
 
 def format_memory_blocks(blocks: Dict[str, str]) -> str:
     """格式化记忆块为HTML展示"""
@@ -66,126 +67,7 @@ class GradioAgent:
         self.answer = None
         self.important_links = []
         
-        prompt = Prompt("""
-{% macro format_tool_results(tool_records) %}
-{% for to in tool_records %}
-来源 {{ loop.index }}️: {{ to.tool }}: {{ to.input }}
-结果:
-```
-{{ to.output }}
-```
-{% endfor %}
-{% endmacro %}
-
-日期：`{{ current_date }}`。
-你是一个信息分析和探索代理，通过系统调查构建解决方案。
-
-## 调查周期
-你以持续的调查周期运作：
-
-1. 查看当前工作区（你的记忆块）
-2. 分析新的工具结果（如果是第一轮，则分析初始任务）
-3. 使用新的见解更新记忆并跟踪调查进度
-4. 根据已识别的线索和信息差距决定下一步要调用的工具
-5. 重复，直到任务完成
-
-## 记忆结构
-你的记忆在调查周期之间持续存在，并且由以下部分组成：
-- **状态**：始终是第一行，指示任务是进行中还是已完成
-- **记忆**：离散信息块的集合，每个块都有一个唯一的 ID
-
-
-## 记忆块的使用
-- 每个记忆块都有一个格式为 <abc-123>content</abc-123> 的唯一 ID
-- 为不同的信息片段创建单独的块：
-  * 发现的 URL（已探索和待处理）
-  * 需要调查的信息差距
-  * 已采取的行动（避免重复）
-  * 有希望的未来探索线索
-  * 关键事实和发现
-  * 发现的矛盾或不一致之处
-- 保持每个块专注于单个想法或信息
-- 在记录来自工具结果的信息时，始终引用来源
-- 使用 ID 来跟踪和管理你的知识（例如，删除过时的信息）
-- 确保存储你存储的事实和发现的来源（URL）
-- 重要的链接包含在多个<important link>标签中
-
-## 线索管理
-- 由于你每轮只能进行 3 次工具调用，因此请存储有希望的线索以供以后使用
-- 为以后要抓取的 URL 创建专用记忆块
-- 维护可在未来轮次中探索的潜在搜索查询的块
-- 根据与任务的相关性对线索进行优先排序
-
-## 可用工具
-- **search**: 用于对新主题或概念进行广泛的信息收集
-  * 示例: {"tool": "search", "input": "2023 年可再生能源统计数据"}
-- **scrape**: 用于从发现的 URL 中提取特定详细信息
-  * 示例: {"tool": "scrape", "input": "https://example.com/energy-report"}
-
-## 工具使用指南
-- **何时使用 search**: 对于新概念、填补知识空白或探索新方向
-- **何时使用 scrape**: 对于发现的可能包含详细信息的 URL
-- **每轮最多 3 次工具调用**
-- **切勿重复完全相同的工具调用**
-- **始终在记忆块中记录来自工具结果的有价值信息**
-
-## 响应格式
-你必须使用包含以下内容的有效 JSON 对象进行响应：
-
-```json
-{
-  "status_update": "进行中 或 已完成",
-  "memory_updates": [
-    {"operation": "add", "content": "要调查的新见解或线索"},
-    {"operation": "delete", "id": "abc-123"}
-  ],
-  "tool_calls": [
-    {"tool": "search", "input": "specific search query"},
-    {"tool": "scrape", "input": "https://discovered-url.com"}
-  ],
-  "answer": "已完成"时，你的最终、全面答案",
-  "important_links": [
-    {"url": "https://example.com", "title": "对于任务产生重要影响的URL和页面title"}
-  ]
-}
-```
-
-## 重要规则
-- "add" 操作会创建一个新的记忆块
-    你不需要指定 ID，系统会自动添加它。
-- "delete" 操作需要要删除的块的特定 ID
-- 切勿编造或捏造信息 - 仅使用来自你的记忆或工具结果的事实
-- 切勿编造 URL - 仅使用通过工具结果发现的 URL
-- 关键：任何未记录在你的记忆块中的信息都将在下一轮中丢失
-  例如，如果你找到一个要抓取的潜在网页，你必须存储 URL 和你的意图
-  示例: `{"operation": "add", "content": "找到相关 URL: https://... 要抓取 ..."}`
-- 重要：确保删除不再需要的记忆块
-- 仅当你已完全解决任务时，才将状态设置为"已完成"
-- 仅当状态为"已完成"时才包含"answer" 字段
-- 仅当有效采用的数据所在的页面url和title才能加入到important_links中
-
-任务：
-```
-{{ task }}
-```
-
-当前工作区：
-```
-{{ workspace }}
-```
-
-工具结果：
-{{ format_tool_results(tool_records) if tool_records else '... no previous tool results ...'}}
-
-重要：按照上述格式生成有效的 JSON 响应。
-
-仔细思考：
-- 你需要保留哪些信息
-- 下一步要调用哪些工具
-- 如何使用专注的记忆块系统地构建你的答案
-
-不要依赖你的内部知识（可能有偏见），目标是使用工具发现信息！
-""")
+        prompt = Prompt(AGENT_PROMPT_TEMPLATE)
         
         current_date = datetime.now().strftime("%Y-%m-%d")
         self.agent = Agent(task=task, prompt=prompt, current_date=current_date)
@@ -251,8 +133,9 @@ gradio_agent = GradioAgent()
 
 # 创建Gradio接口
 with gr.Blocks(css="""
+    /* 记忆块样式 */
     .memory-block {
-        background-color: #f5f5f5;
+        background-color: var(--block-background-fill);
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 12px;
@@ -260,7 +143,7 @@ with gr.Blocks(css="""
         overflow: auto;
     }
     .block-id {
-        color: #2962ff;
+        color: var(--primary-500);
         font-weight: bold;
         margin-bottom: 5px;
         font-size: 16px;
@@ -270,6 +153,8 @@ with gr.Blocks(css="""
         white-space: pre-wrap;
         word-break: break-word;
     }
+    
+    /* 重要链接样式 */
     .important-links {
         margin-top: 20px;
     }
@@ -277,19 +162,21 @@ with gr.Blocks(css="""
         padding-left: 20px;
     }
     .important-links a {
-        color: #1976d2;
+        color: var(--link-text-color);
         text-decoration: none;
     }
     .important-links a:hover {
         text-decoration: underline;
     }
+    
+    /* 工具调用记录样式 */
     .tool-record {
         margin-bottom: 15px;
     }
     .tool-output {
         margin-top: 8px;
         padding: 10px;
-        background-color: #f8f9fa;
+        background-color: var(--background-fill-secondary);
         border-radius: 4px;
         max-height: 300px;
         overflow: auto;
@@ -298,15 +185,37 @@ with gr.Blocks(css="""
         white-space: pre-wrap;
         word-break: break-word;
         margin: 0;
+        color: var(--body-text-color);
     }
     details {
         padding: 8px;
-        background-color: #f0f0f0;
+        background-color: var(--background-fill-primary);
         border-radius: 4px;
     }
     details summary {
         cursor: pointer;
         padding: 4px;
+        color: var(--body-text-color);
+    }
+    
+    /* 自定义一些变量，确保在没有暗色主题的情况下也能正常显示 */
+    :root {
+        --block-background-fill: #f5f5f5;
+        --link-text-color: #1976d2;
+    }
+    
+    /* 针对暗色主题的覆盖样式 */
+    .dark .memory-block {
+        background-color: #333;
+    }
+    .dark .tool-output {
+        background-color: #333;
+    }
+    .dark details {
+        background-color: #2a2a2a;
+    }
+    .dark .important-links a {
+        color: #61afef;
     }
 """, title="DeepSearch Framework - 智能信息搜索分析") as demo:
     gr.Markdown("""
@@ -324,19 +233,20 @@ with gr.Blocks(css="""
             )
             
             with gr.Row():
-                # 添加任务轮数选择
-                max_rounds_slider = gr.Slider(
-                    minimum=1,
-                    maximum=12,
-                    value=8,
-                    step=1,
-                    label="最大任务轮数",
-                    info="设置任务执行的最大轮数（1-12轮）"
-                )
+                # 只保留开始搜索按钮
                 submit_btn = gr.Button("开始搜索", variant="primary")
         
         with gr.Column(scale=2):
             status_output = gr.Textbox(label="状态", value="等待开始")
+            # 将轮数滑块移到右侧状态下方
+            max_rounds_slider = gr.Slider(
+                minimum=1,
+                maximum=12,
+                value=10,
+                step=1,
+                label="最大任务轮数",
+                info="设置任务执行的最大轮数（1-12轮）"
+            )
     
     with gr.Tabs() as tabs:
         with gr.TabItem("搜索结果"):
@@ -411,4 +321,4 @@ with gr.Blocks(css="""
 
 # 启动入口
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860) 
+    demo.launch(server_name="0.0.0.0", server_port=7860, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico")) 
