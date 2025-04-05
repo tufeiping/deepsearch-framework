@@ -2,6 +2,8 @@
 
 一个基于 `Tavily API`、`OpenRouter deepseek/deepseek-r1:free` 和网页抓取的智能信息搜索分析框架。现已支持Web交互界面！
 
+![示例](./snapshot.jpg)
+
 ## 功能特点
 
 - **多源信息检索**：通过Tavily搜索引擎获取最新、多样化的信息
@@ -43,7 +45,22 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 python run.py
 ```
 
-启动后访问 `http://localhost:7860` 即可使用Web界面。
+默认情况下，服务将在`0.0.0.0:7860`上启动。
+
+您也可以通过命令行参数自定义主机和端口：
+
+```bash
+# 自定义端口
+python run.py --port 8080
+
+# 自定义主机地址和端口
+python run.py --host 127.0.0.1 --port 8000
+
+# 查看所有可用选项
+python run.py --help
+```
+
+启动后访问相应地址即可使用Web界面。
 
 ![示例](./screenshot.png)
 
@@ -52,8 +69,6 @@ python run.py
 ```bash
 python main.py "你的查询内容"
 ```
-
-![示例](./snapshot.jpg)  
 
 ## Web界面特性
 
@@ -64,6 +79,7 @@ python main.py "你的查询内容"
 - **可折叠工具调用**：点击展开查看详细工具输出
 - **超链接支持**：重要链接以可点击形式呈现
 - **实时进度显示**：直观展示搜索分析进度
+- **轮数控制**：可设置最大搜索轮数，在速度和深度间取得平衡
 
 ## 获取API密钥
 

@@ -7,6 +7,7 @@ DeepSearch Framework 启动脚本
 
 import os
 import sys
+import argparse
 
 def check_dependencies():
     """检查依赖项是否已安装"""
@@ -52,15 +53,31 @@ def check_env_file():
     
     return True
 
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(description="DeepSearch Framework 启动程序")
+    parser.add_argument("--host", type=str, default="0.0.0.0", 
+                        help="监听的IP地址 (默认: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=7860, 
+                        help="监听的端口号 (默认: 7860)")
+    return parser.parse_args()
+
 def main():
     """主函数，启动Web界面"""
+    # 解析命令行参数
+    args = parse_args()
+    host = args.host
+    port = args.port
+    
     if not check_dependencies() or not check_env_file():
         sys.exit(1)
     
     try:
         from app import demo
         print("正在启动DeepSearch Framework Web界面...")
-        demo.launch(server_name="0.0.0.0", server_port=7860)
+        print(f"监听地址: {host}:{port}")
+        print(f"浏览器访问地址: http://{host if host != '0.0.0.0' else 'localhost'}:{port}")
+        demo.launch(server_name=host, server_port=port)
     except Exception as e:
         print(f"启动Web界面时发生错误: {e}")
         sys.exit(1)

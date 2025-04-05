@@ -8,9 +8,17 @@ from main import Agent, Prompt, BreakPrompt
 
 def format_memory_blocks(blocks: Dict[str, str]) -> str:
     """格式化记忆块为HTML展示"""
+    if not blocks:
+        return "<p>暂无记忆块</p>"
+    
     html = ""
     for block_id, content in blocks.items():
-        html += f'<div class="memory-block"><div class="block-id">{block_id}</div><div class="block-content">{content}</div></div>'
+        html += f'''
+        <div class="memory-block">
+            <div class="block-id">{block_id}</div>
+            <div class="block-content">{content}</div>
+        </div>
+        '''
     return html
 
 def format_links(links: List[Dict[str, str]]) -> str:
@@ -249,14 +257,18 @@ with gr.Blocks(css="""
         padding: 12px;
         margin-bottom: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: auto;
     }
     .block-id {
         color: #2962ff;
         font-weight: bold;
         margin-bottom: 5px;
+        font-size: 16px;
     }
     .block-content {
         margin-left: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
     .important-links {
         margin-top: 20px;
@@ -271,8 +283,30 @@ with gr.Blocks(css="""
     .important-links a:hover {
         text-decoration: underline;
     }
-    .tool-accordion {
-        margin-bottom: 10px;
+    .tool-record {
+        margin-bottom: 15px;
+    }
+    .tool-output {
+        margin-top: 8px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        max-height: 300px;
+        overflow: auto;
+    }
+    .tool-output pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 0;
+    }
+    details {
+        padding: 8px;
+        background-color: #f0f0f0;
+        border-radius: 4px;
+    }
+    details summary {
+        cursor: pointer;
+        padding: 4px;
     }
 """, title="DeepSearch Framework - 智能信息搜索分析") as demo:
     gr.Markdown("""
@@ -310,7 +344,7 @@ with gr.Blocks(css="""
             links_output = gr.HTML(label="重要链接")
         
         with gr.TabItem("记忆块"):
-            memory_output = gr.HTML(label="记忆块")
+            memory_output = gr.HTML(label="记忆块", value="<p>暂无记忆块</p>")
         
         with gr.TabItem("工具调用"):
             tools_container = gr.Accordion(label="工具调用记录容器", open=True)
@@ -321,7 +355,19 @@ with gr.Blocks(css="""
         results = await gradio_agent.process_task(task, int(max_rounds))
         
         # 格式化记忆块
-        memory_html = format_memory_blocks(results["memory_blocks"])
+        memory_html = ""
+        if results["memory_blocks"]:
+            for block_id, content in results["memory_blocks"].items():
+                # 确保HTML标签被转义
+                safe_content = content.replace("<", "&lt;").replace(">", "&gt;")
+                memory_html += f'''
+                <div class="memory-block">
+                    <div class="block-id">{block_id}</div>
+                    <div class="block-content">{safe_content}</div>
+                </div>
+                '''
+        else:
+            memory_html = "<p>暂无记忆块</p>"
         
         # 格式化链接
         links_html = format_links(results["important_links"])
