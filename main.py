@@ -19,7 +19,7 @@ from tools import ScrapTool, SearchTool, extract_largest_json
 
 class Workspace:
     def __init__(self):
-        self.state = {"status": "进行中", "blocks": {}, "answer": None}
+        self.state = {"status": "进行中", "blocks": {}, "answer": None, "important_links": []}
 
     def to_string(self):
         """
@@ -36,6 +36,9 @@ class Workspace:
         else:
             for block_id, content in self.state["blocks"].items():
                 result += f"<{block_id}>{content}</{block_id}>\n"
+
+        for link in self.state["important_links"]:
+            result += f"<important link> {link['url']} - {link['title']}</important link>\n"
 
         return result
 
@@ -92,6 +95,9 @@ class Workspace:
         if answer is not None:
             self.state["answer"] = answer
 
+    def add_important_links(self, links: List[Dict]):
+        self.state["important_links"].extend(links)
+
     def is_done(self):
         return self.state["status"] != "进行中"
     
@@ -129,7 +135,7 @@ class Agent:
         while True:
             try:
                 # Rate limiting - 1 round per 20 seconds
-                await asyncio.sleep(20)
+                await asyncio.sleep(10)
 
                 response = await self.prompt.run(
                     {
@@ -164,6 +170,8 @@ class Agent:
                     response_json.get("memory_updates", []),
                     response_json.get("answer", None),
                 )
+
+                self.workspace.add_important_links(response_json.get("important_links", []))
 
                 tool_calls = response_json["tool_calls"]
 
@@ -240,6 +248,7 @@ prompt = Prompt("""
 - 在记录来自工具结果的信息时，始终引用来源
 - 使用 ID 来跟踪和管理你的知识（例如，删除过时的信息）
 - 确保存储你存储的事实和发现的来源（URL）
+- 重要的链接包含在多个<important link>标签中
 
 ## 线索管理
 - 由于你每轮只能进行 3 次工具调用，因此请存储有希望的线索以供以后使用
@@ -274,7 +283,10 @@ prompt = Prompt("""
     {"tool": "search", "input": "specific search query"},
     {"tool": "scrape", "input": "https://discovered-url.com"}
   ],
-  "answer": "已完成"时，你的最终、全面答案"
+  "answer": "已完成"时，你的最终、全面答案",
+  "important_links": [
+    {"url": "https://example.com", "title": "对于任务产生重要影响的URL和页面title"}
+  ]
 }
 ```
 
@@ -290,6 +302,7 @@ prompt = Prompt("""
 - 重要：确保删除不再需要的记忆块
 - 仅当你已完全解决任务时，才将状态设置为"已完成"
 - 仅当状态为"已完成"时才包含"answer" 字段
+- 仅当有效采用的数据所在的页面url和title才能加入到important_links中
 
 任务：
 ```
@@ -329,9 +342,10 @@ async def main(task: str = task):
         brokeprompt = BreakPrompt()
         response = await brokeprompt.run(agent.workspace.to_string())
         print(f"\n最终答案:\n{response}")
+        print(f"\n重要链接:\n{agent.workspace.state['important_links']}")
     else:
         print(f"\n最终答案:\n{agent.workspace.state['answer']}")
-
+        print(f"\n重要链接:\n{agent.workspace.state['important_links']}")
 if __name__ == "__main__":
     # if has args, then run main with args
     if len(sys.argv) > 1:
