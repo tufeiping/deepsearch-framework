@@ -77,7 +77,7 @@ def main():
         print("正在启动DeepSearch Framework Web界面...")
         print(f"监听地址: {host}:{port}")
         print(f"浏览器访问地址: http://{host if host != '0.0.0.0' else 'localhost'}:{port}")
-        demo.launch(server_name=host, server_port=port, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico"))
+        demo.launch(server_name='0.0.0.0', server_port=port, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico"))
     except Exception as e:
         print(f"启动Web界面时发生错误: {e}")
         sys.exit(1)

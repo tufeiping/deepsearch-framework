@@ -229,7 +229,7 @@ with gr.Blocks(css="""
             task_input = gr.Textbox(
                 label="输入您的查询", 
                 placeholder="例如：帮我制定一个计划，5月份到新加坡游玩4-5天...",
-                lines=5
+                lines=3
             )
             
             with gr.Row():
