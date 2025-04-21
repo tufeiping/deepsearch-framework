@@ -38,7 +38,7 @@ def check_env_file():
         return False
     
     # 读取.env文件检查是否包含必要的配置
-    required_keys = ["OPENROUTER_API_KEY", "TAVILY_API_KEY"]
+    required_keys = ["LLM_API_KEY", "TAVILY_API_KEY"]
     missing_keys = []
     
     with open(".env", "r") as f:
@@ -73,11 +73,11 @@ def main():
         sys.exit(1)
     
     try:
-        from app import demo
+        from app import Web_UI
         print("正在启动DeepSearch Framework Web界面...")
         print(f"监听地址: {host}:{port}")
         print(f"浏览器访问地址: http://{host if host != '0.0.0.0' else 'localhost'}:{port}")
-        demo.launch(server_name='0.0.0.0', server_port=port, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico"))
+        Web_UI.launch(server_name='0.0.0.0', server_port=port, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico"))
     except Exception as e:
         print(f"启动Web界面时发生错误: {e}")
         sys.exit(1)

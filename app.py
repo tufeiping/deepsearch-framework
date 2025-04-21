@@ -214,7 +214,7 @@ with gr.Blocks(css="""
     .dark .important-links a {
         color: #61afef;
     }
-""", title="DeepSearch Framework - 智能信息搜索分析") as demo:
+""", title="DeepSearch Framework - 智能信息搜索分析") as Web_UI:
     gr.Markdown("""
     # 深度搜索助手 - DeepSearch Framework
     
@@ -318,4 +318,4 @@ with gr.Blocks(css="""
 
 # 启动入口
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico")) 
+    Web_UI.launch(server_name="0.0.0.0", server_port=7860, favicon_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "favicon.ico")) 

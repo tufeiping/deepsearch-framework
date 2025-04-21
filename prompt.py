@@ -1,4 +1,3 @@
-import os
 from typing import Any, Dict
 from jinja2 import Environment, BaseLoader
 from llm import OpenRouterModel
@@ -6,13 +5,8 @@ from dotenv import load_dotenv
 
 # 加载.env文件中的环境变量
 load_dotenv()
-
-# 获取API密钥并添加错误处理
-api_key = os.getenv("OPENROUTER_API_KEY")
-if not api_key:
-    raise ValueError("OPENROUTER_API_KEY environment variable not set. Please add it to your .env file.")
     
-model = OpenRouterModel(api_key=api_key)
+model = OpenRouterModel()
 
 class Prompt:
     def __init__(self, template: str) -> None:
