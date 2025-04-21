@@ -6,10 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class OpenRouterModel:
-    def __init__(self, model_name="deepseek/deepseek-r1:free", api_key=None, base_url="https://openrouter.ai/api/v1/chat/completions"):
-        self.model_name = model_name
-        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
-        self.base_url = base_url
+    def __init__(self, model_name=None, api_key=None, base_url=None): #openai/gpt-4.1 deepseek/deepseek-r1:free
+        self.model_name = model_name or os.getenv("MODEL_NAME")
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
+        self.base_url = base_url or os.getenv("API_BASE_URL")
 
     def _get_headers(self):
         return {
@@ -39,7 +39,7 @@ class OpenRouterModel:
                         f"API request failed with status {response.status}: {error_text}"
                     )
                 response = await response.json()
-
+                print(response)
                 think_content = response["choices"][0]["message"]["reasoning"]
                 content = (
                     think_content + "\n" + response["choices"][0]["message"]["content"]
